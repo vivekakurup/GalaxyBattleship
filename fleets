@@ -1,0 +1,265 @@
+from specs.ships import Fighter, Destroyer, Cruiser, Battleship
+import random
+
+class InvalidModuleException(Exception):
+  '''
+  Raises an error if an invalid letter if a ship contains more than the maximum allowed number of weapon / defense slots. If a ship contains more than the maximum allowed number of weapon / defense slots, If a ship contains more than one Ion Thruster Module
+  '''
+  print("Invalid letter entered")
+  
+class InvalidFleetException(Exception):
+  '''
+  Raises an error if you try to build a ship other than F,D,C,B, if your fleet contains ships worth more than 100 command points
+  '''
+  print("Invalid letter entered") 
+
+class Fleet:
+  def __init__(self, userid):
+    '''
+    Creates a Fleet by reading in a matching text file in the fleets/ folder
+    DO NOT CHANGE THIS FUNCTION.
+    '''
+    self.name = userid
+    self.ships = []
+    self.read_fleet_file()
+
+  def read_fleet_file(self):
+    '''
+    This function attempts to load a fleet file and ensures a fleet file is valid.
+    '''
+    # TODO Phase 1
+    
+    cost_count = 0 
+    # reads in the fleet files 
+    with open("fleets/" + str(self.name) + ".txt") as f:
+      lines = f.readlines()
+
+      # a list representing valid characters in the module string 
+      valid_module = ['S','A','E','P','R','L','T', '\n',' ']
+      
+      for line in lines: #looping through lines in the file 
+        defense_count = 0 #how many times one of the defense module letters are passed through 
+        defense_count += line[2:].count("S")
+        defense_count += line[2:].count("A")
+        defense_count += line[2:].count("E")
+        defense_count += line[2:].count("P")
+
+        weapon_count = 0 #how many times one of the weapon modules was passed through 
+        weapon_count += line[2:].count("R")
+        weapon_count += line[2:].count("T")
+        weapon_count += line[2:].count("L")
+        
+        if line[0] == "B": 
+          self.ships.append(Battleship(str(line[2:]))) #appending to a list of how many ship objects there are 
+          cost_count += 8
+          if defense_count > 3 or weapon_count > 4: #checking for exceptions of having more weapons/defense slots than is allowed 
+            raise InvalidModuleException
+          
+        elif line[0] == "C":
+          self.ships.append(Cruiser(str(line[2:])))
+          cost_count += 4
+          if defense_count > 2 or weapon_count > 3:
+            raise InvalidModuleException 
+        
+        elif line[0] == "D":
+          self.ships.append(Destroyer(str(line[2:])))
+          cost_count += 2
+          if defense_count > 1 or weapon_count > 2 :
+            raise InvalidModuleException
+        
+        elif line[0] == "F":
+          self.ships.append(Fighter(str(line[2:])))
+          cost_count += 1
+          if defense_count > 0 or weapon_count > 1:
+            raise InvalidModuleException
+        
+        else:  # if none of the ship letters are entered
+          raise InvalidFleetException
+
+        if line.count("E") > 1: #if there is more than one ion thruster module 
+          raise InvalidModuleException
+        
+        
+        if cost_count > 100:  #if the commmand points exceeds 100
+          raise InvalidFleetException
+          
+        for rest in line[2:-1]: #checking the rest of each module passed in 
+          if rest not in valid_module: #checking the list valid module at the top and comes to this line if there is a letter passed in that is not in the list 
+            raise InvalidModuleException
+      
+    
+  def get_weapons(self, ship_type):
+    '''
+    Returns a list of all weapons in the fleet of ships that have not yet been destroyed and belong to the given ship type.
+    '''
+    # TODO Phase 2
+    ret_weapons = [] #empty list 
+    for ship in self.ships: #looping through all ships in the fleet
+      if isinstance(ship, ship_type) == True: #checking if the ship being passed in is an instance of the ship type they are asking for 
+        # checking if the ship is destroyed 
+        if ship.hull == 0 and ship.armor == 0 and ship.shields == 0: 
+          pass
+        else: #ship is alive 
+          for weapon in ship.weapons: #looping through weapons 
+            ret_weapons.append(weapon) #appending the weapons from the ships that are alive to the empty list 
+      
+    return ret_weapons 
+  
+  def __str__(self):
+    """
+    Returns a string with the summary of a fleet.
+    """
+    # TODO Phase 2
+    sum_dict = self.get_stats()
+
+    
+    s = 'Fleet ' + str(self.name)
+    s += "\n"
+    s += ("=========================================================") 
+    s += "\n"
+    s += 'Ships: '
+    s += str(sum_dict['ships']) 
+    s += '/'
+    s += str(sum_dict['total_ships']) + ", "
+    
+    s += 'Command Points: '
+    s += str(sum_dict['cost'])
+    s += '/'
+    s += str(sum_dict['total_cost'])
+    s += '\n'
+    
+    s += 'Hull: '
+    s += str(sum_dict['hull'])
+    s += '/'
+    s += str(sum_dict['total_hull']) + ", "
+    s += "Armor: "
+    s += str(sum_dict['armor'])
+    s += '/'
+    s += str(sum_dict['total_armor']) + ", "
+    s += "Shields: "
+    s += str(sum_dict['shields'])
+    s += '/'
+    s += str(sum_dict['total_shields'])
+    
+
+    return s
+
+    
+  def get_stats(self):
+    """
+    Returns a dictionary with the fleets most important values.
+    """
+    # TODO: Phase 2
+    total_cost = 0 #all ships 
+    cost = 0 #ships that aren't destroyed 
+    ships_alive = 0
+    total_ships = len(self.ships)
+    alive_hull = 0
+    total_hull = 0
+    alive_armor = 0
+    total_armor = 0
+    alive_shields = 0
+    total_shields = 0
+    total_damage = 0
+    hull = 0
+    armor = 0
+    shields = 0
+    
+    for ship in self.ships: #looping through all the ships overall
+      total_cost += ship.cost
+      total_hull += ship.max_hull
+      total_armor += ship.max_armor
+      total_shields += ship.max_shields
+      if ship.hull > 0:  #checking if the ship isn't dead so below variables are used for ships that aren't dead. 
+        alive_hull += ship.hull
+        alive_armor += ship.armor
+        alive_shields += ship.shields 
+        ships_alive += 1
+        cost += ship.cost 
+    
+    hull += total_hull - alive_hull 
+    armor += total_armor - alive_armor 
+    shields += total_shields - alive_shields
+    total_damage += hull
+    total_damage += armor
+    total_damage += shields 
+    
+    stats = {
+      "cost": cost,
+      "ships": ships_alive,
+      "hull": int(alive_hull),
+      "armor": int(alive_armor),
+      "shields": int(alive_shields),
+      "total_cost": total_cost,
+      "total_ships": total_ships,
+      "total_hull": int(total_hull), # 1 just to avoid an intial div/0 error
+      "total_armor": int(total_armor),
+      "total_shields": int(total_shields),
+      "damage_taken": total_damage
+    }
+    
+    return stats
+    
+  def list_ships(self):
+    # DO NOT CHANGE THIS METHOD
+    print("T |  H   |  A   |  S   |  PD  |  E   | DPS |")
+    print("==|======|======|======|======|======|=====|")
+    for ship in self.ships:
+      print(ship)
+
+def create_random_fleet():
+  """
+  This function will update `random.txt` with a new, randomly composed fleet.
+  DO NOT CHANGE THIS FUNCTION
+  """
+  file = open("fleets/random.txt", "w")
+  s = ""
+
+  cp = 0
+  while(cp != 100):
+    # create random ship type
+    type = random.choice("FFFFDDDCCB")
+
+    # if ship type would exceed command points try again, 
+    # otherwise increase command points and fill ship with modules
+    if type == 'B' and cp + 8 > 100:
+      continue
+    elif type == 'B':
+      cp += 8
+      s += "B " + random_weapon_modules(4) + random_defense_modules(3) + "\n"
+    elif type == 'C' and cp + 4 > 100:
+      continue
+    elif type == 'C':
+      cp += 4
+      s += "C " + random_weapon_modules(3) + random_defense_modules(2) + "\n"
+    elif type == 'D' and cp + 2 > 100:
+      continue
+    elif type == 'D':
+      cp += 2
+      s += "D " + random_weapon_modules(2) + random_defense_modules(1) + "\n"
+    elif type == 'F':
+      cp += 1
+      s += "F " + random_weapon_modules(1) + "\n"
+
+  file.write(s)
+  file.close()
+
+
+def random_weapon_modules(count):
+  # DO NOT CHANGE THIS FUNCTION
+  s = ""
+  while len(s) < count:
+    s += random.choice("RLT")
+  return s
+
+def random_defense_modules(count):
+  # DO NOT CHANGE THIS FUNCTION
+  s = ""
+  while len(s) < count:
+    module = random.choice("SAEP")
+    if module == "E" and "E" in s:
+      continue
+    s += module
+  return s
+
+
