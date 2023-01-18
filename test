@@ -1,0 +1,19 @@
+
+from specs.fleets import Fleet, create_random_fleet
+from specs.ships import Fighter, Destroyer, Cruiser, Battleship
+
+f = Fleet("random")
+dict = f.get_stats()
+#print(dict)
+
+f2 = Fleet("test")
+weapon = f2.get_weapons(Fighter)
+laser = weapon[0]
+laser.target = f.ships[0]
+f.ships[0].evasion = 0
+laser.accuracy = 1
+#f.ships[0].shields = 0
+#f.ships[0].armor = 0
+laser.fire(0)
+#print(f.ships[0].shields)
+print(f.get_stats())
