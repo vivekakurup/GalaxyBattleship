@@ -1,0 +1,200 @@
+
+from random import random
+
+class Weapon:
+  '''
+    Creates a class that represents the weapons that can be used to fight against opposing ships 
+  '''
+  
+  def __init__(self, weapon_type, ship, damage, accuracy,cooldown):
+    '''
+    Base constructor for weapons
+    Attributes:
+      ship; instance of the ship class; the ship the weapon is being added on to 
+      damage; float; the percentage of damage the weapon causes 
+      accuracy; float; the percentage of accuracy of the weapon 
+      cooldown; int; how long it takes the weapon to recharge and cooldown before being able to use it again 
+    '''
+    # TODO Phase 1
+    self.ship = ship 
+    self.damage = damage 
+    self.accuracy = accuracy  
+    self.target = None
+    self.cooldown = cooldown 
+    self.weapon_type = weapon_type 
+    self.shots_torpedo = 0 
+    
+    
+  def fire(self, combat_round):
+    '''
+    First checks if a weapon is eligible for firing, otherwise do nothing (charge).
+    
+    Resolves a weapon applying damage to a specific target.
+
+    If a hit would deduct more damage than the remaining shields the remaining damage of that specific shot is voided. E.g. A ship has 100 shields left. Your weapon made 150 damage. Instead of disabling the shields and doing 50 damage to the armor of the target it will only disable the shield. The next weapon hit will damage armor. Also make sure hull, armor and shields only go down to 0, not become negative values.
+    '''
+    # TODO Phase 2
+    # checking if a weapon is able to be fired 
+    # creates a random number to check against point defense, accuracy, and evasion 
+    random_accuracy = random()
+    random_evasion = random()
+    random_pd = random()
+    
+    if self.target != None: 
+      if combat_round % self.cooldown == 0: 
+      # checking if a weapon is a torpedo 
+        if isinstance(self,Torpedo):
+          # checking the point defense to see if the torpedo shoots 
+          if random_pd > self.target.pd: 
+            # checks if the target ship still has armor 
+            if self.target.armor > 0: 
+              # damages armor 
+              if self.target.armor > self.damage: 
+                self.target.armor -= self.damage * self.armor_modifier
+              # sets armor to 0 if there is none left 
+              else: 
+                self.target.armor = 0
+            # checks if the target ship still has hull 
+            elif self.target.hull > 0:
+              if self.target.hull > self.damage * self.hull_modifier:
+                # damages hull 
+                self.target.hull -= self.damage * self.hull_modifier
+              else: 
+                self.target.hull = 0
+              
+        # checks if the weapon is a laser or railgun 
+        if isinstance(self,Laser) or isinstance(self, Railgun):
+          
+          # checks the accuracy of the weapon 
+          if random_accuracy < self.accuracy:
+          
+            # checks if the target ship can evade the fire 
+            if random_evasion > self.target.evasion:
+              # checks if the target still has shields 
+              if self.target.shields > 0:
+                if self.target.shields > self.damage:
+                  # damages shields 
+                  self.target.shields -= self.damage * self.shield_modifier 
+                else:
+                  # sets shields to 0 if there is none left 
+                  self.target.shields = 0
+                
+              # checks if the target ship still has armor 
+              elif self.target.armor > 0: 
+                if self.target.armor > self.damage: 
+                  # damages armor 
+                  self.target.armor -= self.damage * self.armor_modifier
+                else: 
+                  # sets armor to 0 if there is none left 
+                  self.target.armor = 0
+              
+              # checks if the target ship still has hull 
+              elif self.target.hull > 0:
+                
+                #print(str(self.target.hull) + 'target')
+                #print(str(self.damage) + 'damage')
+                if self.target.hull > self.damage:
+                  # damages hull 
+                  #print(str(self.target.hull) + 'target')
+                  #print(str(self.damage) + 'damage')
+                  
+                  self.target.hull -= self.damage * self.hull_modifier
+                else: 
+                  # sets hull to 0 if there is none left 
+                  self.target.hull = 0
+        
+    else: 
+      return 
+                  
+
+class Railgun(Weapon):
+  '''
+    Creates a class that represents a railgun and inherits from the weapons class 
+    Class Properties: 
+      hull_modifier; float; percentage of damage done to the hull of ship with a railgun 
+      armor_modifier; float; percentage of damage done to the armor of ship with a railgun 
+      shield_modifier; float; percentage of damage done to the shield of ship with a railgun 
+      cooldown; int; how long it takes the weapon to recharge and cooldown before being able to use it again 
+  '''
+  # TODO Phase 1
+  
+  # class properties 
+  hull_modifier = 0.9
+  armor_modifier = 0.4     
+  shield_modifier = 1.2      
+  cooldown = 1  
+  
+  
+  def __init__(self, ship, dmg_modifier, accuracy, cooldown = 1):
+    '''
+      Constructor for the Railgun class 
+      Parameters: inherits from the weapons class 
+      Additional Parameters: 
+        dmg_modifier; float; the percentage of damage done to an object that helps calculate total damage 
+      Returns: N/A
+    '''
+    self.dmg_modifier = dmg_modifier
+    # inherits the constructor from the weapons class 
+    super().__init__("R", ship,10*self.dmg_modifier,accuracy,cooldown = 1)
+9
+
+class Laser(Weapon):
+  '''
+    Creates a class that represents a laser and inherits from the weapons class 
+    Class Properties: 
+      hull_modifier; float; percentage of damage done to the hull of ship with a laser 
+      armor_modifier; float; percentage of damage done to the armor of ship with a laser 
+      shield_modifier; float; percentage of damage done to the shield of ship with a laser 
+      cooldown; int; how long it takes the weapon to recharge and cooldown before being able to use it again 
+  '''
+  # class properties 
+  hull_modifier = 1.0
+  armor_modifier = 1.2    
+  shield_modifier = 0.4      
+  cooldown = 5 
+  
+  
+  def __init__(self, ship, dmg_modifier, accuracy, cooldown = 5):
+    '''
+      Constructor for the Laser class 
+      Parameters: inherits from the weapons class 
+      Additional Parameters: 
+        dmg_modifier; float; the percentage of damage done to an object that helps calculate the total damage done 
+      Returns: N/A
+    '''
+    self.dmg_modifier = dmg_modifier
+    # inherits from the constructor from the weapons class
+    
+    #super().__init__(ship, damage = 60 * self.dmg_modifier, accuracy = accuracy, cooldown = 5)
+    super().__init__("L", ship,60 * self.dmg_modifier,accuracy, cooldown = 5)
+    
+  
+
+class Torpedo(Weapon):
+  '''
+    Creates a class that represents a torpedo and inherits from the weapons class 
+    Class Properties: 
+      hull_modifier; float; percentage of damage done to the hull of ship with a torpedo 
+      armor_modifier; float; percentage of damage done to the armor of ship with a torpedo 
+      shield_modifier; float; percentage of damage done to the shield of ship with a torpedo 
+      cooldown; int; how long it takes the weapon to recharge and cooldown before being able to use it again 
+  '''
+  # TODO Phase 1
+
+  # class properties 
+  hull_modifier = 1.2
+  armor_modifier = 1.0    
+  shield_modifier =  0    
+  cooldown = 15
+  
+  def __init__(self, ship, dmg_modifier, accuracy, cooldown=15):
+    '''
+      Constructor for the Torpedo class 
+      Parameters: inherits from the weapons class 
+      Additional Parameters: 
+        dmg_modifier; float; the percentage of damage done to an object that helps calculate the total damage done 
+      Returns: N/A
+    '''
+    self.dmg_modifier = dmg_modifier
+    # inherits from the constructor of the weapons class 
+    super().__init__('T',ship,120 * self.dmg_modifier,accuracy, cooldown = 15,)
