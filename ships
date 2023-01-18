@@ -1,0 +1,247 @@
+from specs.weapons import Railgun, Laser, Torpedo
+#from weapons import Railgun, Laser, Torpedo
+
+
+class Ship:
+  '''
+    Creates a class representing a ship
+  '''
+  
+  def __init__(self,ship_type, modules, base, dmg_modifier, evasion): 
+    '''
+      Constructor for the ship class 
+      Parameters: 
+        max_shields; int; max shield value for the ships 
+        max_armor; int; max armor value for the ships
+        max_hull; int; max hull value for the ships 
+        dmg_modifier; float; percentage used to help calculate the total damage a weapon does to part of a ship 
+        weapons; list; list of all the weapons on the ship
+        evasion; float; the ability to dodge an attack
+        pd; float; chance to shoot down incoming torpedoes
+        ship_type; string; represents the type of the ship 
+        modules; string; represents the different modules apart of a ship 
+        base; string; the type of ship being created 
+      Returns: N/A
+    '''
+    self.max_shields = base 
+    self.max_armor = base 
+    self.max_hull = base
+    self.dmg_modifier = dmg_modifier 
+    self.weapons = []
+    self.evasion = evasion 
+    self.pd = 0
+    self.ship_type = ship_type 
+    
+    
+    # loops through the modules and adjusts the defense modules for the ship 
+    for m in modules: 
+      if m == 'S':
+        self.max_shields += 0.5 * base 
+      elif m == 'A':
+        self.max_armor += 0.5 * base 
+      elif m == 'E':
+        self.evasion *= 2  
+      elif m == 'P':
+        self.pd += 1/3
+      
+      # updates the accuracy values of the different types of ships if there is a railgun module apart of the ship 
+      elif m == "R":
+        if self.ship_type == 'B':
+          accuracy = 0.8
+        elif self.ship_type == 'C':
+          accuracy = 0.9
+        elif (self.ship_type == 'D' or self.ship_type == 'F'):
+          accuracy = 1
+
+        # appends an instance of the railgun class to the weapons list 
+        self.weapons.append(Railgun(self,self.dmg_modifier,accuracy, self.evasion))
+        
+      # updates the accuracy values of the different types of ships if there is a laser module apart of the ship
+      elif m == 'L':
+        if self.ship_type == 'B':
+          accuracy = 0.8
+        elif self.ship_type == 'C':
+          accuracy = 0.9
+        elif self.ship_type == 'D':
+          accuracy = 1
+        elif self.ship_type == 'F':
+          accuracy = 1
+        
+        # appends an instance of the laser class to the weapons list 
+        self.weapons.append(Laser(self,self.dmg_modifier, accuracy, self.evasion))
+
+      # updates the accuracy value to 1 if there is a torpedo module apart of the ship
+      elif m == 'T':
+        accuracy = 1
+        # appends an instance of the railgun class to the weapons list 
+        self.weapons.append(Torpedo(self,self.dmg_modifier,accuracy, self.evasion))
+
+    # sets the hull, armor, and shield values equal to their max values 
+    self.hull = self.max_hull
+    self.armor = self.max_armor
+    self.shields = self.max_shields
+
+
+    def get_health(self):
+      return self.hull + self.shields + self.armor 
+      
+    
+  
+    def __str__(self):
+    # TODO Phase 1
+      '''Prints out a table with the values of each of the ships attributes
+      '''
+
+    # calculates the total value of damage and cooldown done to a ship 
+    total_damage = 0
+    total_cooldown = 0
+    for i in range(len(self.weapons)):
+      total_damage += self.weapons[i].damage
+      total_cooldown += self.weapons[i].cooldown
+      
+    s = ("T |  H   |  A   |  S   |  PD  |  E   | DPS |") 
+    s += "\n"
+    s += ("==|======|======|======|======|======|=====|") 
+    s +=  "\n"
+    s += self.ship_type 
+    s += " | "
+    s += str((round(self.hull)))
+    s += " | "
+    s += str((round(self.armor)))
+    s += " | "
+    s += str((round(self.shields))) 
+    s += " |  "
+    s += str((round(self.pd)))
+    s +=  "%  |  "
+    s += str((round(self.evasion * 100)))
+    s += "% |  "
+    dps = total_damage / total_cooldown
+    s += str((round(dps)))
+    s += " |"
+    return s
+    
+class Fighter(Ship):
+  '''
+  Child class of the ship: Fighter 
+  
+  Class Properties:
+    cost; int; cost/command points that can be used to make new ships 
+    priority; int; rank among the different types of ships (not relevant in phase 1)
+  
+  Attributes:  
+    max_weapons; int; accounts for how many weapons each specific ship is supposed to have. 
+    max_defense; int; accounts for the defense slots that each ship is allowed to have. 
+    modules; string; the string of letters passed in which dictates what type of ship, weapons and defense modules they can have. 
+    evasion; float;  defines the ability of each ship to dodge an attack
+    damage modifier; float; the percentage used to calculate the total damage a weapon does to a ship
+    base; string; the type of ship defined by a letter 
+  '''
+
+  cost = 1
+  priority = 1
+  
+  def __init__(self,modules, evasion = 0.8):
+    '''
+      Construtor of the Fighter class 
+      Inherits from the ship class 
+    '''
+    # inherits the constructor from the ship class 
+    super().__init__('F',modules,base = 100, dmg_modifier = 1, evasion = 0.8)
+    # sets the values of the weapon slots for a fighter 
+    self.max_weapons = 1
+    self.max_defense = 0    
+
+class Destroyer(Ship):
+  '''
+  Child class of the ship: Destroyer 
+  
+  Class Properties:
+    cost; int; cost/command points that can be used to make new ships 
+    priority; int; rank among the different types of ships (not relevant in phase 1)
+  
+  Attributes:  
+    max_weapons; int; accounts for how many weapons each specific ship is supposed to have. 
+    max_defense; int; accounts for the defense slots that each ship is allowed to have. 
+    modules; string; the string of letters passed in which dictates what type of ship, weapons and defense modules they can have. 
+    evasion; float;  defines the ability of each ship to dodge an attack
+    damage modifier; float; the percentage used to calculate the total damage a weapon does to a ship
+    base; string; the type of ship defined by a letter 
+  '''
+ 
+  # TODO Phase 1
+  cost = 2 
+  priority = 2
+  
+  def __init__(self,modules):
+    '''
+      Construtor of the Destroyer class 
+      Inherits from the ship class 
+    '''
+    # inherits the constructor from the ship class 
+    super().__init__('D',modules, base = 300, dmg_modifier = 1, evasion = 0.4)
+    # sets the values of the weapon slots for a destroyer 
+    self.max_weapons = 2
+    self.max_defense = 1
+  
+class Cruiser(Ship):
+  '''
+  Child class of the ship; Cruiser 
+  
+  Class Properties:
+    cost; int; cost/command points that can be used to make new ships 
+    priority; int; rank among the different types of ships (not relevant in phase 1)
+  
+  Attributes:  
+    max_weapons; int; accounts for how many weapons each specific ship is supposed to have. 
+    max_defense; int; accounts for the defense slots that each ship is allowed to have. 
+    modules; string; the string of letters passed in which dictates what type of ship, weapons and defense modules they can have. 
+    evasion; float;  defines the ability of each ship to dodge an attack
+    damage modifier; float; the percentage used to calculate the total damage a weapon does to a ship
+    base; string; the type of ship defined by a letter 
+  '''
+  # TODO Phase 1
+  cost = 4
+  priority = 3
+  def __init__(self,modules):
+    '''
+      Construtor of the Cruiser class 
+      Inherits from the ship class 
+    '''
+    # inherits the constructor from the ship class 
+    super().__init__('C',modules, base = 600, dmg_modifier = 1.2, evasion = 0.2)
+    # sets the values of the weapon slots for a cruiser 
+    self.max_weapons = 3
+    self.max_defense = 2
+    
+class Battleship(Ship):
+  '''
+  Child class of the ship; Battleship  
+  
+  Class Properties:
+    cost; int; cost/command points that can be used to make new ships 
+    priority; int; rank among the different types of ships (not relevant in phase 1)
+  
+  Attributes:  
+    max_weapons; int; accounts for how many weapons each specific ship is supposed to have. 
+    max_defense; int; accounts for the defense slots that each ship is allowed to have. 
+    modules; string; the string of letters passed in which dictates what type of ship, weapons and defense modules they can have. 
+    evasion; float;  defines the ability of each ship to dodge an attack
+    damage modifier; float; the percentage used to calculate the total damage a weapon does to a ship
+    base; string; the type of ship defined by a letter 
+  '''
+  
+  # TODO Phase 1
+  cost = 8
+  priority = 4
+  def __init__(self,modules):
+    '''
+      Construtor of the Battleship class 
+      Inherits from the ship class 
+    '''
+    # inherits the constructor from the ship class 
+    super().__init__('B',modules, base = 1000, dmg_modifier = 1.5, evasion = 0.1)
+    # sets the values of the weapon slots for a battleship 
+    self.max_weapons = 4
+    self.max_defense = 3
+    
+
