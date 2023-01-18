@@ -1,0 +1,328 @@
+import curses
+
+from specs.ships import Battleship, Cruiser, Destroyer, Fighter
+
+# Prepare Target Computer (Phase 2)
+# TODO change user ID and rename file below:
+from computers.student import set_targets as target_right_ships 
+from computers.random import set_targets as target_left_ships
+
+class Simulation:
+  def __init__(self, leftFleet, rightFleet, gui):
+    self.finished = False
+    self.round = 0
+    self.leftFleet = leftFleet
+    self.rightFleet = rightFleet
+
+    if(gui):
+      self.speed = 0
+      self.refreshrate = int(1000/30) # update screen 30 times per sec
+      self.gui = curses.wrapper(self.bootGUI)
+
+    else:
+      # Combat without gui
+      print("My Fleet:")
+      self.leftFleet.list_ships()
+      print(f"Starting Battle: {leftFleet.name} VS {rightFleet.name}")
+
+      # Combat continues for as long as both players have ships and we have not passed round 1000
+      # the last condition is to prevent stalemates where no players can hit each other.
+      while not self.finished:
+        self.combat_round()
+        self.check_finished()
+        self.round += 1
+
+    self.exit(gui)
+
+  def combat_round(self):
+    '''
+    Conducts a single combat round and updates both fleets with the damage they took
+    Schedule all remaining ships to fire their weapons on their targets.
+    DO NOT CHANGE THIS FUNCTION.
+    '''
+    # Aquire Targets
+    target_right_ships(self.leftFleet, self.rightFleet)
+    target_left_ships(self.rightFleet, self.leftFleet)
+    
+    # Fighters shoot first, then Destroyers, then Cruisers, finally Battleships
+    self.fire_weapons(Fighter)
+    self.fire_weapons(Destroyer)
+    self.fire_weapons(Cruiser)
+    self.fire_weapons(Battleship)
+
+  def fire_weapons(self, priority):
+    """
+    Allows all weapons from a specific ship type to shoot on their targets.
+    All ships from both sides will fire simultaniously.
+    DO NOT CHANGE THIS FUNCTION.
+    """
+    leftWeapons = self.leftFleet.get_weapons(priority)
+    rightWeapons = self.rightFleet.get_weapons(priority)
+
+    for weapon in leftWeapons:
+      weapon.fire(self.round)
+
+    for weapon in rightWeapons:
+      weapon.fire(self.round)
+
+  def check_finished(self, win=None):
+    # Check for timeout
+    if self.round > 1000:
+      if win:
+        self.speed = 0
+        win.addstr(1, 49, "{:>30}".format("DRAW (Timeout)"), curses.color_pair(3))
+      else:
+        print("DRAW (Timeout)")
+      self.finished = True
+      return
+
+    # get fleet stats
+    left_stats = self.leftFleet.get_stats()
+    right_stats = self.rightFleet.get_stats()
+
+    lScore = left_stats["cost"]
+    rScore = right_stats["cost"]
+
+    # someone won or timeout --> pause and prevent from unpausing.
+
+    # Stalemate
+    if lScore == 0 and rScore == 0:
+      if win:
+        self.speed = 0
+        win.addstr(1, 49, "{:>30}".format("DRAW (none alive)"), curses.color_pair(3))
+      else:
+        print("DRAW (none alive)")
+      self.finished = True
+      
+    # right side won
+    elif lScore == 0 :
+      self.finished = True
+      msg = f"WINNER: {self.rightFleet.name} (Score: {rScore})"
+
+      if win:
+        self.speed = 0
+        win.addstr(1, 49, "{:>30}".format(msg), curses.color_pair(5))
+      else:
+        print(msg)
+      
+    # left side wone
+    elif rScore == 0:
+      self.finished = True
+      msg = f"WINNER: {self.leftFleet.name} (Score: {lScore})"
+
+      if win:
+        self.speed = 0
+        win.addstr(1, 49, "{:>30}".format(msg), curses.color_pair(5))
+      else:
+        print(msg)
+      
+  def bootGUI(self, screen):
+
+    # Clear screen
+    curses.curs_set(0)
+    screen.clear()
+    screen.nodelay(True)
+
+    # Ships that still have full shields is displayed in green
+    curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    # Ships that still have shieDs is displayed in blue
+    curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    # Ships that still have armor are yellow
+    curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    # Ships that still have hull are red
+    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+    # Ships that are destroyed are invisible
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_BLACK)
+
+    key = -1
+
+    # create a box with a nice border
+    win = curses.newwin(32, 80)
+    win.border()
+
+    # Header and non-updating stuff
+    win.addstr(1, 2, "Round")
+    win.addstr(1, 32, "COMBAT SIMULATOR")
+    win.addstr(1, 71, "Speed 0")
+
+    win.addstr(2, 2, "{:<10}".format(self.leftFleet.name))
+    win.addstr(2, 39, "VS")
+    win.addstr(2, 68, "{:>10}".format(self.rightFleet.name))
+
+    win.addstr(3, 1, "―" * 78)
+    win.addstr(23, 6, "Press a key from 0-9 to change simulation speed (ESC) exit combat")
+
+    self.draw_ships(win)
+    self.draw_stats(win)
+
+    frame = 0
+    while True:
+      key = screen.getch()
+
+      # allow to exit the simulation by pressing ESC key
+      if key == 27: 
+        break
+
+      # allow to change simulation speed if not finished
+      if not self.finished and key >= 48 and key <= 57:
+        self.speed = key - 48
+        win.addstr(1, 77, str(self.speed))
+
+      # Combat continues for as long as both players have ships and we have not passed round 1000
+      # the last condition is to prevent stalemates where no players can hit each other.
+      if not self.finished and self.speed > 0 and frame > int(self.refreshrate / self.speed):
+
+        # compute next combat round and reset frame
+        frame = 0
+        self.round += 1
+        win.addstr(1, 8, str(self.round))
+        
+        self.combat_round()
+        self.check_finished(win)
+        self.draw_ships(win)
+        self.draw_stats(win)
+      
+      win.refresh()
+
+      curses.napms(self.refreshrate)
+      frame += 1
+
+    self.exit(True)
+
+  def draw_ships(self, win):
+    '''This will draw a beautiful combat interface onto our screen'''
+    row = 5
+
+    # count ships
+    B = 0; C = 0; D = 0; F = 0;
+    
+    for ship in self.leftFleet.ships:
+      if (isinstance(ship, Battleship)):
+        win.addstr(row + B, 4, "▮", self.get_color(ship))
+        B += 1
+
+      if (isinstance(ship, Cruiser)):
+        win.addstr(row + C % 16, 9 + C // 16 * 2, "◼", self.get_color(ship))
+        C += 1
+
+      if (isinstance(ship, Destroyer)):
+        win.addstr(row + D % 16, 20 - D // 16 * 2, "◗", self.get_color(ship))
+        D += 1
+
+      if (isinstance(ship, Fighter)):
+        win.addstr(row + F % 16, 35 - F // 16 * 2, "●", self.get_color(ship))
+        F += 1
+
+    B = 0; C = 0; D = 0; F = 0;
+
+    for ship in self.rightFleet.ships:
+      if (isinstance(ship, Battleship)):
+        win.addstr(row + B, 73, "▮", self.get_color(ship))
+        B += 1
+
+      if (isinstance(ship, Cruiser)):
+        win.addstr(row + C % 16, 68 + C // 16 * 2, "◼", self.get_color(ship))
+        C += 1
+
+      if (isinstance(ship, Destroyer)):
+        win.addstr(row + D % 16, 60 + D // 16 * 2, "◖", self.get_color(ship))
+        D += 1
+
+      if (isinstance(ship, Fighter)):
+        win.addstr(row + F % 16, 45 + F // 16 * 2, "●", self.get_color(ship))
+        F += 1
+
+  def draw_stats(self, win):
+    win.addstr(24, 1, "―" * 78)
+    lStats = self.leftFleet.get_stats()
+    rStats = self.rightFleet.get_stats()
+
+    # Ships
+    a1 = lStats["ships"]
+    a2 = lStats["total_ships"]
+    a = f"{a1}/{a2}"
+    b1 = rStats["ships"]
+    b2 = rStats["total_ships"]
+    b = f"{b1}/{b2}"
+    c = "Ships"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(25, 2, f"{text}")
+    
+    # Command Points
+    a1 = lStats["cost"]
+    a2 = lStats["total_cost"]
+    a = f"{a1}/{a2}"
+    b1 = rStats["cost"]
+    b2 = rStats["total_cost"]
+    b = f"{b1}/{b2}"
+    c = "Command Points"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(26, 2, f"{text}")
+
+    a = str(round(lStats["shields"] / lStats["total_shields"] * 100)) + " %"
+    b = str(round(rStats["shields"] / rStats["total_shields"] * 100)) + " %"
+    c = "Shields"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(27, 2, f"{text}")
+
+    a = str(round(lStats["armor"] / lStats["total_armor"] * 100)) + " %"
+    b = str(round(rStats["armor"] / rStats["total_armor"] * 100)) + " %"
+    c = "Armor"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(28, 2, f"{text}")
+
+    a = str(round(lStats["hull"] / lStats["total_hull"] * 100)) + " %"
+    b = str(round(rStats["hull"] / rStats["total_hull"] * 100)) + " %"
+    c = "Hull"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(29, 2, f"{text}")
+
+    # Damage Taken
+    a = lStats["damage_taken"]
+    b = rStats["damage_taken"]
+    c = "Damage Taken"
+    text =  f"{a:<30}{c:^16}{b:>30}"
+    win.addstr(30, 2, f"{text}")
+    
+  def exit(self, gui=False):
+    if(gui):
+      curses.endwin()
+
+    if self.finished:
+      print(f"Simulation ended after {self.round} Rounds.")
+      print(self.leftFleet)
+      print(self.rightFleet)
+    else:
+      print("Simulation aborted.")
+      print(self.leftFleet)
+      print(self.rightFleet)
+
+  def get_color(self, ship):
+    '''
+    Changes the color to match the health of a ship.
+    Colors:
+    1 - transparent   Ship Destroyed
+    2 - red           Hull damaged
+    3 - yellow        Armor damaged
+    4 - blue          Shields damaged
+    5 - green         Ship at perfect Health
+    '''
+
+    # default, undamaged
+    color = 5 
+
+    if ship.shields < ship.max_shields: 
+      color = 4
+
+    if ship.armor < ship.max_armor: 
+      color = 3
+
+    if ship.hull < ship.max_hull: 
+      color = 2
+
+    if ship.hull == 0: 
+      color = 1
+
+    return curses.color_pair(color)
+
+
